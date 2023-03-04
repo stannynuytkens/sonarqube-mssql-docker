@@ -1,0 +1,45 @@
+version: '1.0'
+services:
+
+  sonarqube:
+    image: sonarqube:lts-community
+    container_name: sonarqube
+    depends_on:
+      mssql:
+        condition: service_healthy
+    ports:
+      - 9000:9000
+    volumes:
+      - ./data:/opt/sonarqube/data
+      - ./logs:/opt/sonarqube/logs
+      - ./extensions:/opt/sonarqube/extensions
+    env_file:
+      - .env
+    networks:
+      - sonarqube
+    restart: unless-stopped
+    
+  mssql:
+    image: mcr.microsoft.com/mssql/server
+    container_name: sonarqube-data
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_PID=Express
+      - MSSQL_SA_PASSWORD=Password4mssql
+    volumes:
+      - ./sql/:/usr/src/sql/
+    env_file:
+      - .env
+    command: ['/bin/bash', '-c', '/usr/src/sql/initialize.sh']
+    healthcheck:
+      test: ['CMD-SHELL', '/usr/src/sql/health.sh']
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    networks:
+      - sonarqube
+    restart: unless-stopped
+
+networks:
+  sonarqube:
+    name: sonarqube
